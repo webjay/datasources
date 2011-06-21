@@ -26,56 +26,83 @@
 class TwitterSource extends DataSource {
 
 	// oauth
-	const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
-	const authorizeUrl = 'https://api.twitter.com/oauth/authorize';
-	const accessTokenUrl = 'https://api.twitter.com/oauth/access_token';
+	const requestToken = 'https://api.twitter.com/oauth/request_token';
+	const authorize = 'https://api.twitter.com/oauth/authorize';
+	const accessToken = 'https://api.twitter.com/oauth/access_token';
 	// get info from Twitter
-	const rateLimitStatusUrl = 'http://api.twitter.com/1/account/rate_limit_status.json';
-	const usersFollowingUrl = 'http://api.twitter.com/1/friends/ids.json';
-	const usersFollowersUrl = 'http://api.twitter.com/1/followers/ids.json';
-	const friendshipsIncomingUrl = 'http://api.twitter.com/1/friendships/incoming.json';
-	const friendshipsOutgoingUrl = 'http://api.twitter.com/1/friendships/outgoing.json'
-	const blockingUrl = 'http://api.twitter.com/1/blocks/blocking/ids.json';
-	const userIdsUrl = 'http://api.twitter.com/1/users/lookup.json';
+	const rateLimitStatus = 'http://api.twitter.com/1/account/rate_limit_status.json';
+	const usersFollowing = 'http://api.twitter.com/1/friends/ids.json';
+	const usersFollowers = 'http://api.twitter.com/1/followers/ids.json';
+	const friendshipsIncoming = 'http://api.twitter.com/1/friendships/incoming.json';
+	const friendshipsOutgoing = 'http://api.twitter.com/1/friendships/outgoing.json';
+	const blocking = 'http://api.twitter.com/1/blocks/blocking/ids.json';
+	const userIds = 'http://api.twitter.com/1/users/lookup.json';
 	// make changes
-	const notificationFollowUrl = 'http://api.twitter.com/1/notifications/follow.json';
-	const notificationLeaveUrl = 'http://api.twitter.com/1/notifications/leave.json';
-	const reportSpamUrl = 'http://api.twitter.com/1/report_spam.json';
-	const friendshipCreateUrl = 'http://api.twitter.com/1/friendships/create.json';
-	const friendshipDestroyUrl = 'http://api.twitter.com/1/friendships/destroy.json';
-	const blockCreateUrl = 'http://api.twitter.com/1/blocks/create.json';
-	const blockDestroyUrl = 'http://api.twitter.com/1/blocks/destroy.json';
+	const notificationFollow = 'http://api.twitter.com/1/notifications/follow.json';
+	const notificationLeave = 'http://api.twitter.com/1/notifications/leave.json';
+	const reportSpam = 'http://api.twitter.com/1/report_spam.json';
+	const friendshipCreate = 'http://api.twitter.com/1/friendships/create.json';
+	const friendshipDestroy = 'http://api.twitter.com/1/friendships/destroy.json';
+	const blockCreate = 'http://api.twitter.com/1/blocks/create.json';
+	const blockDestroy = 'http://api.twitter.com/1/blocks/destroy.json';
 	// lists
-	const listSubscribeUrl = 'http://api.twitter.com/version/lists/subscribers/create.json';
-	const listUnsubscribeUrl = 'http://api.twitter.com/version/lists/subscribers/destroy.json';
-	const listsUrl = 'http://api.twitter.com/1/lists.json';
-	const listSubscribersUrl = 'http://api.twitter.com/1/lists/subscribers.json';
-	const listsFollowingUrl = 'http://api.twitter.com/1/lists/subscriptions.json';
-	const listAddUsersUrl = 'http://api.twitter.com/1/lists/members/create_all.json';
-	const listRemoveUserUrl = 'http://api.twitter.com/1/lists/members/destroy.json';
-	const listCreateUrl = 'http://api.twitter.com/1/lists/create.json';
-	const listUpdateUrl = 'http://api.twitter.com/1/lists/update.json';
-	const listDeleteUrl = 'http://api.twitter.com/1/lists/destroy.json';
+	const listSubscribe = 'http://api.twitter.com/version/lists/subscribers/create.json';
+	const listUnsubscribe = 'http://api.twitter.com/version/lists/subscribers/destroy.json';
+	const lists = 'http://api.twitter.com/1/lists.json';
+	const listSubscribers = 'http://api.twitter.com/1/lists/subscribers.json';
+	const listsFollowing = 'http://api.twitter.com/1/lists/subscriptions.json';
+	const listAddUsers = 'http://api.twitter.com/1/lists/members/create_all.json';
+	const listRemoveUser = 'http://api.twitter.com/1/lists/members/destroy.json';
+	const listCreate = 'http://api.twitter.com/1/lists/create.json';
+	const listUpdate = 'http://api.twitter.com/1/lists/update.json';
+	const listDelete = 'http://api.twitter.com/1/lists/destroy.json';
+
+	public function listSources ($data = null) {}
 	
 	/**
-	 * Constructor
+	 * Query Twitter.
 	 *
-	 * @param array $config Configuration array
+	 * @param string $type internal method name
+	 * @param array $parameters for internal method
+	 * @return mixed data from internal method
 	 */
-	public function __construct ($config) {
-		parent::__construct($config);
+	public function query ($type, $parameters = array()) {
+		if (method_exists($this, $type)) {
+			return call_user_func_array(array($this, $type), $parameters);
+		} else {
+			// check that const exists
+			if (defined('self::'.$type) === false) {
+				return false;
+			}
+			// create accessToken
+			$accessToken = array(
+				'oauth_token' => $parameters['oauth_token'],
+				'oauth_token_secret' => $parameters['oauth_token_secret']
+			);
+			unset($parameters['oauth_token']);
+			unset($parameters['oauth_token_secret']);
+			// create url
+			$url = constant('self::'.$type);
+			$url .= '?'.http_build_query($parameters, null, '&');
+			// get or send data
+			$result = $this->fetch($url, $accessToken);
+			if ($result === false) {
+				return false;
+			}
+			return json_decode($result, true);
+		}
 	}
-
+	
 	/**
 	 * Send the user to authorization.
 	 *
 	 * @param string $callback url to send the user after authorization
-	 * @return array authorizeUrl, requestToken
+	 * @return array authorize, requestToken
 	 */
-	public function getAuthorizeUrl ($callback) {
-		$o = new OAuth($this->key, $this->secret);
-		$requestToken = $o->getRequestToken(self::requestTokenUrl, $callback);
-		$authorizeUrl = self::authorizeUrl.'?'.http_build_query(array(
+	private function authorize ($callback) {
+		$o = new OAuth($this->config['key'], $this->config['secret']);
+		$requestToken = $o->getRequestToken(self::requestToken, $callback);
+		$authorizeUrl = self::authorize.'?'.http_build_query(array(
 			'oauth_token' => $requestToken['oauth_token'],
 			'oauth_callback' => $callback,
 			'force_login' => true
@@ -89,27 +116,35 @@ class TwitterSource extends DataSource {
 	/**
 	 * The user came back from authorization and we can now get the access token.
 	 *
-	 * @param array $request_token which we received from getAuthorizeUrl
+	 * @param array $request_token which we received from getAuthorize
 	 * @param string $oauth_verifier which we GET from Twitter
 	 * @return array access token
 	 */
-	public function getAccessToken ($requestToken, $oauthVerifier) {
+	private function accessToken ($requestToken, $oauthVerifier) {
 		$o = new OAuth($this->config['key'], $this->config['secret']);
 		$o->setToken($requestToken['oauth_token'], $requestToken['oauth_token_secret']);
-		return $o->getAccessToken(self::accessTokenUrl, null, $oauthVerifier);
+		return $o->getAccessToken(self::accessToken, null, $oauthVerifier);
 	}
 	
 	private function fetch ($url, $accessToken) {
-		$o = new OAuth($this->config['key'], $this->config['secret']);
-		$o->setToken($accessToken['oauth_token'], $accessToken['oauth_token_secret']);
-		$result = $o->fetch($url);
-		if ($result === true) {
-			return json_decode($o->getLastResponse());
+		try {
+			$o = new OAuth($this->config['key'], $this->config['secret']);
+			$o->setToken($accessToken['oauth_token'], $accessToken['oauth_token_secret']);
+			$method = OAUTH_HTTP_METHOD_GET;
+			$result = $o->fetch($url, null, $method);
+			if ($result === true) {
+				$response_info = $o->getLastResponseInfo();
+				$this->log($response_info, 'debug');
+				return $o->getLastResponse();
+			}
+		} catch (OAuthException $E) {
+			$response = json_decode($E->lastResponse);
+			$this->log($response);
 		}
 		return false;
 	}
 	
-	public function getRateLimitStatus ($accessToken) {
+	private function rateLimitStatus ($accessToken) {
 		return $this->fetch(self::rateLimitStatus, $accessToken);
 	}
 
