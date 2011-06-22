@@ -36,7 +36,7 @@ class TwitterSource extends DataSource {
 	const friendshipsIncoming = 'http://api.twitter.com/1/friendships/incoming.json';
 	const friendshipsOutgoing = 'http://api.twitter.com/1/friendships/outgoing.json';
 	const blocking = 'http://api.twitter.com/1/blocks/blocking/ids.json';
-	const userIds = 'http://api.twitter.com/1/users/lookup.json';
+	const usersInfo = 'http://api.twitter.com/1/users/lookup.json';
 	// make changes
 	const notificationFollow = 'http://api.twitter.com/1/notifications/follow.json';
 	const notificationLeave = 'http://api.twitter.com/1/notifications/leave.json';
@@ -57,35 +57,42 @@ class TwitterSource extends DataSource {
 	const listUpdate = 'http://api.twitter.com/1/lists/update.json';
 	const listDelete = 'http://api.twitter.com/1/lists/destroy.json';
 
-	public function listSources ($data = null) {}
-	
+	public function listSources () {}
+
 	/**
 	 * Query Twitter.
 	 *
-	 * @param string $type internal method name
-	 * @param array $parameters for internal method
-	 * @return mixed data from internal method
+	 * @param string $resource Twitter resource
+	 * @param array $arguments
+	 * @param object $model The model calling us
+	* $arguments are
+	 * @param array $parameters for the request
+	 * @param string $method to use for the request
+	 * @param array $accessToken for Twitter
+	 * @return mixed data from Twitter resource
 	 */
-	public function query ($type, $parameters = array()) {
-		if (method_exists($this, $type)) {
-			return call_user_func_array(array($this, $type), $parameters);
+	public function query ($resource, $arguments) {
+		// set function parameters
+		$parameters = $arguments[0];
+		$method = empty($arguments[1]) ? OAUTH_HTTP_METHOD_GET : $arguments[1];
+		$accessToken = empty($arguments[2]) ? false : $arguments[2];
+		if (method_exists($this, $resource)) {
+			if ($accessToken === false) {
+				$param = $parameters;
+			} else {
+				$param = array_merge($parameters, $accessToken);
+			}
+			return call_user_func_array(array($this, $resource), $param);
 		} else {
-			// check that const exists
-			if (defined('self::'.$type) === false) {
+			// check that const exist
+			if (defined('self::'.$resource) === false) {
 				return false;
 			}
-			// create accessToken
-			$accessToken = array(
-				'oauth_token' => $parameters['oauth_token'],
-				'oauth_token_secret' => $parameters['oauth_token_secret']
-			);
-			unset($parameters['oauth_token']);
-			unset($parameters['oauth_token_secret']);
 			// create url
-			$url = constant('self::'.$type);
+			$url = constant('self::'.$resource);
 			$url .= '?'.http_build_query($parameters, null, '&');
 			// get or send data
-			$result = $this->fetch($url, $accessToken);
+			$result = $this->fetch($url, $method, $accessToken);
 			if ($result === false) {
 				return false;
 			}
@@ -126,26 +133,26 @@ class TwitterSource extends DataSource {
 		return $o->getAccessToken(self::accessToken, null, $oauthVerifier);
 	}
 	
-	private function fetch ($url, $accessToken) {
+	private function fetch ($url, $method, $accessToken) {
 		try {
 			$o = new OAuth($this->config['key'], $this->config['secret']);
 			$o->setToken($accessToken['oauth_token'], $accessToken['oauth_token_secret']);
-			$method = OAUTH_HTTP_METHOD_GET;
 			$result = $o->fetch($url, null, $method);
 			if ($result === true) {
-				$response_info = $o->getLastResponseInfo();
-				$this->log($response_info, 'debug');
+				$responseInfo = $o->getLastResponseInfo();
+				$this->log($responseInfo, 'debug');
 				return $o->getLastResponse();
 			}
 		} catch (OAuthException $E) {
 			$response = json_decode($E->lastResponse);
+			pr($response);
 			$this->log($response);
 		}
 		return false;
 	}
 	
 	private function rateLimitStatus ($accessToken) {
-		return $this->fetch(self::rateLimitStatus, $accessToken);
+		return $this->fetch(self::rateLimitStatus, OAUTH_HTTP_METHOD_GET, $accessToken);
 	}
 
 }
