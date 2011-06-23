@@ -5,6 +5,7 @@
  * @license MIT License (http://www.opensource.org/licenses/mit-license.php)
  * @author Jacob Friis Saxberg <@webjay>
  * @link https://github.com/webjay/datasources
+ * @link https://github.com/webjay/datasources/wiki/Howto-twitter
  * @package       datasources
  * @subpackage    datasources.models.datasources
  * 
@@ -149,10 +150,6 @@ class TwitterSource extends DataSource {
 			$this->log($response);
 		}
 		return false;
-	}
-	
-	private function rateLimitStatus ($accessToken) {
-		return $this->fetch(self::rateLimitStatus, OAUTH_HTTP_METHOD_GET, $accessToken);
 	}
 
 }
