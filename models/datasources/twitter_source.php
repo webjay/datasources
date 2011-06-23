@@ -1,6 +1,7 @@
 <?php
 /**
  * Twitter API Datasource
+ * A CakePHP datasource for interacting with the Twitter API.
  *
  * @license MIT License (http://www.opensource.org/licenses/mit-license.php)
  * @author Jacob Friis Saxberg <@webjay>
@@ -9,15 +10,6 @@
  * @package       datasources
  * @subpackage    datasources.models.datasources
  * 
- *
- * A CakePHP datasource for interacting with the Twitter API.
- *
- * Create a datasource in your config/database.php
- *  public $twitter = array(
- *		'datasource' => 'Datasources.TwitterSource',
- *		'key' => 'PUBLIC KEY',
- *		'secret' => 'SECRET KEY'
- *  );
  */
 
 /**
