@@ -1,70 +1,27 @@
 <?php
 /**
- * Twitter API Datasource
- * A CakePHP datasource for interacting with the Twitter API.
+ * LinkedIn API Datasource
+ * A CakePHP datasource for interacting with the LinkedIn API.
  *
  * @license MIT License (http://www.opensource.org/licenses/mit-license.php)
  * @author Jacob Friis Saxberg <@webjay>
  * @link https://github.com/webjay/datasources
- * @link https://github.com/webjay/datasources/wiki/Howto-twitter
  * @package       datasources
  * @subpackage    datasources.models.datasources
  * 
  */
 
-/**
- * Twitter Datasource
- *
- */
-class TwitterSource extends DataSource {
-
-	// oauth
-	const requestToken = 'https://api.twitter.com/oauth/request_token';
-	const authorize = 'https://api.twitter.com/oauth/authorize';
-	const accessToken = 'https://api.twitter.com/oauth/access_token';
-	// get info from Twitter
-	const rateLimitStatus = 'http://api.twitter.com/1/account/rate_limit_status.json';
-	const usersFollowing = 'http://api.twitter.com/1/friends/ids.json';
-	const usersFollowers = 'http://api.twitter.com/1/followers/ids.json';
-	const friendshipsIncoming = 'http://api.twitter.com/1/friendships/incoming.json';
-	const friendshipsOutgoing = 'http://api.twitter.com/1/friendships/outgoing.json';
-	const blocking = 'http://api.twitter.com/1/blocks/blocking/ids.json';
-	const usersInfo = 'http://api.twitter.com/1/users/lookup.json';
-	// make changes
-	const notificationFollow = 'http://api.twitter.com/1/notifications/follow.json';
-	const notificationLeave = 'http://api.twitter.com/1/notifications/leave.json';
-	const reportSpam = 'http://api.twitter.com/1/report_spam.json';
-	const friendshipCreate = 'http://api.twitter.com/1/friendships/create.json';
-	const friendshipDestroy = 'http://api.twitter.com/1/friendships/destroy.json';
-	const blockCreate = 'http://api.twitter.com/1/blocks/create.json';
-	const blockDestroy = 'http://api.twitter.com/1/blocks/destroy.json';
-	// lists
-	const listSubscribe = 'http://api.twitter.com/version/lists/subscribers/create.json';
-	const listUnsubscribe = 'http://api.twitter.com/version/lists/subscribers/destroy.json';
-	const lists = 'http://api.twitter.com/1/lists.json';
-	const listSubscribers = 'http://api.twitter.com/1/lists/subscribers.json';
-	const listsFollowing = 'http://api.twitter.com/1/lists/subscriptions.json';
-	const listAddUsers = 'http://api.twitter.com/1/lists/members/create_all.json';
-	const listRemoveUser = 'http://api.twitter.com/1/lists/members/destroy.json';
-	const listCreate = 'http://api.twitter.com/1/lists/create.json';
-	const listUpdate = 'http://api.twitter.com/1/lists/update.json';
-	const listDelete = 'http://api.twitter.com/1/lists/destroy.json';
+class LinkedinSource extends DataSource {
+	
+	const requestToken = 'https://www.linkedin.com/uas/oauth/requestToken';
+	const authorize = 'https://www.linkedin.com/uas/oauth/authorize';
+	const accessToken = 'https://www.linkedin.com/uas/oauth/accessToken';
+	const peopleSearch = 'http://api.linkedin.com/v1/people-search:(people:(id,first-name,last-name),num-results,member-url-resources:(member-url:(name,url)))';
 
 	public function listSources () {}
 
-	/**
-	 * Query Twitter.
-	 *
-	 * @param string $resource Twitter resource
-	 * @param array $arguments
-	 * @param object $model The model calling us
-	* $arguments are
-	 * @param array $parameters for the request
-	 * @param string $method to use for the request
-	 * @param array $accessToken for Twitter
-	 * @return mixed data from Twitter resource
-	 */
 	public function query ($resource, $arguments) {
+		date_default_timezone_set('UTC');
 		// set function parameters
 		$parameters = $arguments[0];
 		$method = empty($arguments[1]) ? OAUTH_HTTP_METHOD_GET : $arguments[1];
@@ -103,8 +60,7 @@ class TwitterSource extends DataSource {
 		$requestToken = $o->getRequestToken(self::requestToken, $callback);
 		$authorizeUrl = self::authorize.'?'.http_build_query(array(
 			'oauth_token' => $requestToken['oauth_token'],
-			'oauth_callback' => $callback,
-			'force_login' => true
+			'oauth_callback' => $callback
 		), null, '&');
 		return array(
 			'authorizeUrl' => $authorizeUrl, 
@@ -129,6 +85,7 @@ class TwitterSource extends DataSource {
 		try {
 			$o = new OAuth($this->config['key'], $this->config['secret']);
 			$o->setToken($accessToken['oauth_token'], $accessToken['oauth_token_secret']);
+			$o->setTimestamp(time());
 			$result = $o->fetch($url, $parameters, $method);
 			if ($result === true) {
 				$responseInfo = $o->getLastResponseInfo();
@@ -138,11 +95,11 @@ class TwitterSource extends DataSource {
 		} catch (OAuthException $E) {
 			$response = json_decode($E->lastResponse, true);
 			if ($response === null) {
-				// not a Twitter error, most likely connection
-				$this->log('Twitter: '.$E);
+				$this->log('LinkedIn: '.$E);
+				pr($E);
 			} else {
 				pr($response);
-				$this->log('Twitter: '.$response);
+				$this->log('LinkedIn: '.$response);
 			}
 		}
 		return false;
